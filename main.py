@@ -202,7 +202,7 @@ def clean_and_parse(series):
 
 
 
-
+#---------------------------
 #-------------report gen--------------
 #---------------------------
 def report_generation(master_data_set,dmi_display_dir,tag_read,ref_dir,main_fodler,output,division,dmi_display_main):
@@ -678,38 +678,45 @@ def report_generation(master_data_set,dmi_display_dir,tag_read,ref_dir,main_fodl
 # MAIN ENTRY FUNCTION FOR GUI
 # ==============================
 
-def run_full_process(stn_main, main_fodler, division):
-
-    stns_folders = [
+def run_full_process(stn_main, main_fodler, division,append_terminal):
+   
+    
+    '''stns_folders = [
         f for f in os.listdir(stn_main)
         if os.path.isdir(os.path.join(stn_main, f))
     ]
-
+    for s in stns_folders:
+        s_path=os.path.join(stn_main, s)
+        stns_folders=os.listdir(s_path)'''
+    s = next(
+        f for f in os.listdir(stn_main)
+        if os.path.isdir(os.path.join(stn_main, f))
+    )
+    s_path=os.path.join(stn_main, s)
+    stns_folders=os.listdir(s_path)
     for stn in stns_folders:
+        append_terminal(stn)
 
-        master_data = os.path.join(stn_main, stn)
+        master_data = os.path.join(stn_main,s,stn)
         output = master_data
 
         print(f"--------------------------{stn}--------------------------")
-
-        tag_read = pd.read_csv(
-            next(os.path.join(main_fodler, f)
-                 for f in os.listdir(main_fodler)
-                 if f.startswith('TagRead'))
-        )
-
-        largest_dmi_display_path = next(
-            os.path.join(main_fodler, f)
-            for f in os.listdir(main_fodler)
-            if f.startswith('DmiDisplay')
-        )
+        #print(os.listdir(main_fodler))
         try:
-
-            dmi_display = pd.read_csv(largest_dmi_display_path, delimiter=";")
-            
-        except:
-            dmi_display = pd.read_csv(largest_dmi_display_path)
-            
+            for root, dirs, files in os.walk(main_fodler):
+                for f in files:
+                    if f.startswith("TagRead"):
+                        tag_read_path = os.path.join(root, f)
+                        tag_read = pd.read_csv(tag_read_path)
+                    if f.startswith("DmiDisplay"):
+                        dmi_display_path = os.path.join(root, f)
+                        try:
+                            dmi_display = pd.read_csv(dmi_display_path, delimiter=";")
+                        except:
+                            dmi_display = pd.read_csv(dmi_display_path)
+        except Exception as e:
+            append_terminal(f"ERROR-1:{e}")
+        
         dmi_display.columns = dmi_display.columns.str.strip()
         dmi_display = dmi_display[['TrainDirection', 'TagNo', 'AbsLocation', 'TimeStamp']]
         dmi_display['TrainDirection'] = dmi_display['TrainDirection'].replace(
@@ -752,3 +759,13 @@ def run_full_process(stn_main, main_fodler, division):
 
             except Exception as e:
                 print(f"Error while generating {stn}, {ref_dir}: {e}")
+        #final_op=stn_main
+    for root, dirs, files in os.walk(s_path):
+        for file in files:
+            if "Tag_validation_&_verification_report" not in file:
+                try:
+                    os.remove(os.path.join(root, file))
+                except Exception as e:
+                    append_terminal(f"Delete error: {file} | {e}")
+
+    return s_path
